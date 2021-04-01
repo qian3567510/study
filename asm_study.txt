@@ -1,0 +1,22 @@
+SCAS是在检索目标字符串；REPNE/REPNZ是重复前缀（CX<>0 且ZF=0重复执行字符串指令），类似的还有REPE/REPZ、REP
+  ax/al   搜索数据  
+  es:di   目标串  
+  cx         串长度  
+  df         方向标志
+  
+  利用 REPNE SCAS 来计算字符串长度：
+ mov ecx, FFFFFFFF    设置循环次数-1
+ sub eax, eax             设置搜索内容0
+ repnz                        
+ scasb                         一直重复搜索到EDI字符串末尾的0
+ not ecx                       得到搜索次数，也就是字符串的完整长度
+ dec ecx                       -1得到字符串不包含末尾0的长度
+ 
+利用 REPNE SCAS 来检测代码中是否被下int3断点（CC）：
+  00401241  /$  8D3D 00104000 LEA EDI,DWORD PTR DS:[<ModuleEntryPoint>>;  入口地址401000装入EDI
+  00401247  |.  B9 97020000   MOV ECX,297                              ;  ECX赋值297
+  0040124C  |.  E8 45000000   CALL 00401296                            ;  CC装入AL
+  00401251  |.  F2:AE         REPNE SCAS BYTE PTR ES:[EDI]             ;  重复操作
+  比如断点设在00401147处，入口出处为00401000，则F8后，ECX=297-（00401147-00401000+1）=14F，当然你也可以在原地不停的按住F4，直到ECX=1后再按F8
+  00401253  |.  85C9          TEST ECX,ECX                             ;  ECX是否为0，如果下了断点，这里的ECX是非0值
+  00401255  |.  75 3E         JNZ 00401295                             ;  既然你下了断点，这里一定不能跳
